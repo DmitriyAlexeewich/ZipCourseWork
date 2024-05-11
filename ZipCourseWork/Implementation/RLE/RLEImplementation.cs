@@ -5,7 +5,7 @@ namespace ZipCourseWork.Implementation.RLE
 {
     public class RLEImplementation
     {
-        public byte[] Compress(string source)
+        public byte[] Compress(byte[] source)
         {
             if (source.IsNullOrEmpty())
                 return Array.Empty<byte>();
@@ -29,17 +29,17 @@ namespace ZipCourseWork.Implementation.RLE
                 if (currentByte.TryAdd(source[i]))
                     continue;
 
-                result.AddRange(currentByte.Compress());
+                var compressed = currentByte.Compress();
+
+                var t = compressed[0].GetBits();
+
+                result.AddRange(compressed);
 
                 if (source.Length - 1 == i)
                 {
                     currentByte = new RLESingleBytesInfo(source[i]);
                     break;
                 }
-
-                var t = source[i - 1];
-                var tt = source[i];
-                var ttt = source[i+1];
 
                 if (source[i - 1] == source[i])
                 {
@@ -60,86 +60,52 @@ namespace ZipCourseWork.Implementation.RLE
             if (source.IsNullOrEmpty())
                 return Array.Empty<byte>();
 
+            var compressed = source.ToList();
             var result = new List<byte>();
-            var sourceInBits = new BitArray(source);
-            var sourceInBools = new List<bool>();
 
-            foreach (bool item in sourceInBits)
-                sourceInBools.Add(item);
-
-            while (sourceInBools.Count > 0)
+            while (compressed.Count > 0)
             {
-                var isSingle = sourceInBools[0];
-                sourceInBools.RemoveAt(0);
+                var infoBits = compressed[0].GetBits();
 
-                if (isSingle && sourceInBools.Count > 0)
+                var isSingle = infoBits[0];
+                var count = CalculateCount(infoBits, isSingle);
+                compressed.RemoveAt(0);
+
+                for (var i = 0; i < count; i++)
                 {
-                    result.AddRange(UncompressSingle(sourceInBools));
-                    continue;
+                    if (isSingle)
+                    {
+                        result.Add(compressed[0]);
+                        continue;
+                    }
+
+                    result.Add(compressed[0]);
+                    compressed.RemoveAt(0);
                 }
 
-                if (sourceInBools.Count < 1)
-                    break;
-
-                var byteCount = UncompressByteCount(sourceInBools);
-
-                if (sourceInBools.Count < 1)
-                    break;
-
-                var singleByte = UncompressSingle(sourceInBools);
-
-                if (singleByte.IsNullOrEmpty())
-                    break;
-
-                for (var i = 0; i < byteCount[0]; i++)
-                    result.AddRange(singleByte);
+                if (isSingle)
+                    compressed.RemoveAt(0);
             }
 
             return result.ToArray();
         }
 
-        private byte[] UncompressSingle(List<bool> source)
+
+        private int CalculateCount(bool[] infoBits, bool isSingle)
         {
-            var byteInBools = new List<bool>();
+            var bits = new List<bool>();
 
-            for (var i = 0; i < 8; i++)
-            {
-                if(source.Count<1)
-                    return Array.Empty<byte>();
+            for(var i=1; i<8; i++)
+                bits.Add(infoBits[i]);
 
-                byteInBools.Add(source[0]);
-                source.RemoveAt(0);
-            }
+            bits.Add(false);
 
-            var byteInBits = new BitArray(byteInBools.ToArray());
-            var bytes = new byte[1];
+            int count = bits.GetByte();
 
-            byteInBits.CopyTo(bytes, 0);
+            if (isSingle)
+                count++;
 
-            return bytes;
-        }
-
-        private byte[] UncompressByteCount(List<bool> source)
-        {
-            var byteInBools = new List<bool>();
-
-            byteInBools.Add(false);
-
-            for (var i = 0; i < 7; i++)
-            {
-                if (source.Count < 1)
-                    return Array.Empty<byte>();
-
-                byteInBools.Add(source[0]);
-                source.RemoveAt(0);
-            }
-
-            var byteInBits = new BitArray(byteInBools.ToArray());
-            var bytes = new byte[1];
-
-            byteInBits.CopyTo(bytes, 0);
-
-            return bytes;
+            return count;
         }
     }
 }

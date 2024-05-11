@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 
 namespace ZipCourseWork.Implementation.Helpers
 {
@@ -26,7 +27,15 @@ namespace ZipCourseWork.Implementation.Helpers
             var bytes = BitConverter.GetBytes(source);
             var result = new List<bool>();
 
-            bytes.ForEach(x => result.AddRange(x.GetBits()));
+            result.AddRange(bytes[0].GetBits());
+
+            for (int i = 1; i < bytes.Length; i++)
+            {
+                if (bytes[i] == 0)
+                    break;
+
+                result.AddRange(bytes[i].GetBits());
+            }
 
             return result.ToArray();
         }

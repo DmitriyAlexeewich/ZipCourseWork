@@ -4,28 +4,28 @@ namespace ZipCourseWork.Implementation.RLE
 {
     public abstract class RLEByteInfo
     {
-        protected List<char> _letters;
+        protected List<byte> _bytes;
+        protected const int _maxCount = 127;
 
-        public abstract bool TryAdd(char lettter);
+        public abstract bool TryAdd(byte source);
 
         public abstract List<byte> Compress();
 
-        public RLEByteInfo(char lettter)
+        public RLEByteInfo(byte source)
         {
-            _letters = new List<char>() { lettter };
+            _bytes = new List<byte>() { source };
         }
     }
 
     public class RLESingleBytesInfo : RLEByteInfo
     {
-        public RLESingleBytesInfo(char lettter) : base(lettter) { }
+        public RLESingleBytesInfo(byte source) : base(source) { }
 
         private int _length = 1;
-        private const int _maxCount = 129;
 
-        public override bool TryAdd(char lettter)
+        public override bool TryAdd(byte source)
         {
-            if (_letters[0] != lettter || _length >= _maxCount)
+            if (_bytes[0] != source || _length >= _maxCount)
                 return false;
 
             _length++;
@@ -39,11 +39,10 @@ namespace ZipCourseWork.Implementation.RLE
             var infoByte = new List<bool>();
 
             infoByte.Add(true);
-            infoByte.AddRange(_maxCount.GetBits().Take(7));
+            infoByte.AddRange(_length.GetBits().Take(7));
 
             result.Add(infoByte.GetByte());
-
-            result.AddRange(BitConverter.GetBytes(_letters[0]));
+            result.Add(_bytes[0]);
 
             return result;
         }
@@ -51,16 +50,14 @@ namespace ZipCourseWork.Implementation.RLE
 
     public class RLEMultipleBytesInfo : RLEByteInfo
     {
-        private const int _maxCount = 128;
+        public RLEMultipleBytesInfo(byte source) : base(source) { }
 
-        public RLEMultipleBytesInfo(char lettter) : base(lettter) { }
-
-        public override bool TryAdd(char lettter)
+        public override bool TryAdd(byte source)
         {
-            if (_letters.Last() == lettter || _letters.Count >= _maxCount)
+            if (_bytes.Last() == source || _bytes.Count >= _maxCount)
                 return false;
 
-            _letters.Add(lettter);
+            _bytes.Add(source);
             return true;
         }
 
@@ -71,12 +68,10 @@ namespace ZipCourseWork.Implementation.RLE
             var infoByte = new List<bool>();
 
             infoByte.Add(false);
-            infoByte.AddRange(_maxCount.GetBits().Take(7));
+            infoByte.AddRange(_bytes.Count.GetBits().Take(7));
 
-            _letters.ForEach(x =>
-            {
-                result.AddRange(BitConverter.GetBytes(x));
-            });
+            result.Add(infoByte.GetByte());
+            _bytes.ForEach(x => result.Add(x));
 
             return result;
         }

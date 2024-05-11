@@ -5,7 +5,7 @@
         private RLEImplementation _rleImplementation = new RLEImplementation();
         private string Path = Directory.GetCurrentDirectory();
 
-        public void Compress(string fileName, string source)
+        public void Compress(string fileName, byte[] source)
         {
             Console.WriteLine();
             Console.WriteLine("---RLE Compress---");
