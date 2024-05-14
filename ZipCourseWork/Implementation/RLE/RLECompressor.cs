@@ -1,40 +1,95 @@
-﻿namespace ZipCourseWork.Implementation.RLE
+﻿using System.Text.Json;
+using ZipCourseWork.Implementation.Helpers;
+
+namespace ZipCourseWork.Implementation.RLE
 {
     public class RLECompressor
     {
-        private RLEImplementation _rleImplementation = new RLEImplementation();
-        private string Path = Directory.GetCurrentDirectory();
+        private List<int> _t = new List<int>();
+        private List<byte> _bytes = new List<byte>();
+        private RLEByteListInfo _bytesInfo;
 
-        public void Compress(string fileName, byte[] source)
+        public void AddToCompress(byte source)
         {
-            Console.WriteLine();
-            Console.WriteLine("---RLE Compress---");
+            _t.Add(source);
 
-            Console.WriteLine("Compress...");
+            if (_bytesInfo is null)
+            {
+                _bytesInfo = new RLEByteListInfo(source);
+                return;
+            }
 
+            if (_bytesInfo.TryAdd(source))
+                return;
 
+            if (!_bytesInfo.IsSingle && _bytesInfo.LastByte == source)
+            {
+                _bytes.AddRange(_bytesInfo.Compress(true));
+                _bytesInfo = new RLEByteListInfo(source);
+                _bytesInfo.TryAdd(source);
+                return;
+            }
 
-            var compressResult = _rleImplementation.Compress(source);
-
-            File.WriteAllBytes($"{Path}\\Result\\RLE\\{fileName}.comp", compressResult);
-
-            Console.WriteLine("Completed!");
+            _bytes.AddRange(_bytesInfo.Compress());
+            _bytesInfo = new RLEByteListInfo(source);
         }
 
-        public void Uncompress(string fileName, string extensionName)
+        public byte[] Compress()
         {
-            Console.WriteLine();
-            Console.WriteLine("---RLE Uncompress---");
+            if(_bytesInfo != null && _bytesInfo.HasAny)
+                _bytes.AddRange(_bytesInfo.Compress());
 
-            Console.WriteLine("Read files...");
+            return _bytes.ToArray();
+        }
 
-            var bytes = File.ReadAllBytes($"{Path}\\Result\\RLE\\{fileName}.comp");
+        public void AddToUncompress(byte source) => _bytes.Add(source);
 
-            var compressResult = _rleImplementation.UnCompress(bytes);
+        public byte[] UnCompress()
+        {
+            if (_bytes.IsNullOrEmpty())
+                throw new NullReferenceException(nameof(_bytes));
 
-            File.WriteAllBytes($"{Path}\\Result\\RLE\\{fileName}_uncomp.{extensionName}", compressResult);
+            var result = new List<byte>();
 
-            Console.WriteLine("Completed!");
+            while (_bytes.Count > 0)
+            {
+                var infoBits = _bytes[0].GetBits();
+
+                var isSingle = infoBits[0];
+                var count = CalculateCount(infoBits, isSingle);
+                _bytes.RemoveAt(0);
+
+                for (var i = 0; i < count; i++)
+                {
+                    if (isSingle)
+                    {
+                        result.Add(_bytes[0]);
+                        continue;
+                    }
+
+                    result.Add(_bytes[0]);
+                    _bytes.RemoveAt(0);
+                }
+
+                if (isSingle)
+                    _bytes.RemoveAt(0);
+            }
+
+            return result.ToArray();
+        }
+
+        private int CalculateCount(bool[] infoBits, bool isSingle)
+        {
+            var bits = new List<bool>();
+
+            for (var i = 1; i < 8; i++)
+                bits.Add(infoBits[i]);
+
+            bits.Add(false);
+
+            int count = bits.GetByte();
+
+            return count;
         }
     }
 }
