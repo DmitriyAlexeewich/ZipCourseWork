@@ -10,7 +10,8 @@ namespace ZipCourseWork.Implementation.Huffman
     public class HuffmanTreeUncompressor
     {
         private int _emptyBitesCount;
-        private int _headerItemsBytesLength;
+        private HeaderItemsCount _headerItemsCount;
+        private HuffmanHeaderItemsList _headerItems;
 
         public HuffmanTreeUncompressor(byte source)
         {
@@ -21,8 +22,29 @@ namespace ZipCourseWork.Implementation.Huffman
         {
             var bits = source.GetBits();
             _emptyBitesCount = bits.Take(3).GetByte();
-            _headerItemsBytesLength = bits.Take(new Range(3, 4)).GetByte() + 1;
-            var t = 0;
+            _headerItemsCount = new HeaderItemsCount(bits.Take(new Range(3, 4)).GetByte() + 1);
+        }
+
+        public void Add(byte value)
+        {
+            if (_headerItemsCount.TryAddByte(value))
+            {
+                if (_headerItemsCount.IsConfigured)
+                    _headerItems = new HuffmanHeaderItemsList(_headerItemsCount.Count);
+                return;
+            }
+
+            if (_headerItems.TryAddByte(value))
+                return;
+
+            var bits = new List<bool>();
+
+            if(_headerItems.HasExtraValue)
+                bits.AddRange(_headerItems.GetExtraValues());
+
+            bits.AddRange(value.GetBits());
+
+
         }
     }
 }
