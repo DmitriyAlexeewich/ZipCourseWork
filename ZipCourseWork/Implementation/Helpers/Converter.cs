@@ -1,33 +1,33 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 
 namespace ZipCourseWork.Implementation.Helpers
 {
     public static class Converter
     {
-        public static List<byte> GetBytes(this char source)
+        public static byte[] RemoveExtraZero(this byte[] source)
         {
-            var bytes = BitConverter.GetBytes(source);
+            var result = new List<byte>() { source[0] };
 
-            var normalizedBytes = new List<byte>() { bytes[0] };
-
-            for (int i = 1; i < bytes.Length; i++)
+            for (int i = 1; i < source.Length; i++)
             {
-                if (bytes[i] == 0)
+                if (source[i] == 0)
                     break;
 
-                normalizedBytes.Add(bytes[i]);
+                result.Add(source[i]);
             }
 
-            return normalizedBytes;
+            return result.ToArray();
         }
 
-        public static bool[] GetBits(this int source)
+        public static bool[] GetBits(this int source, bool compress = false)
         {
             var bytes = BitConverter.GetBytes(source);
             var result = new List<bool>();
 
             result.AddRange(bytes[0].GetBits());
+
+            if (!compress)
+                return result.ToArray();
 
             for (int i = 1; i < bytes.Length; i++)
             {
@@ -51,19 +51,13 @@ namespace ZipCourseWork.Implementation.Helpers
             return result.ToArray();
         }
 
-        public static byte GetByte(this int source)
+        public static bool[] GetBits(this byte[] source)
         {
-            var bytes = BitConverter.GetBytes(source);
+            var bits = new BitArray(source);
+            var result = new List<bool>();
 
-            return bytes[0];
-        }
-
-        public static byte[] GetBytes(this string source)
-        {
-            var result = new List<byte>();
-
-            foreach(var letter in source)
-                result.AddRange(letter.GetBytes());
+            foreach (bool bit in bits)
+                result.Add(bit);
 
             return result.ToArray();
         }

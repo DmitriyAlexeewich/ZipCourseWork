@@ -1,32 +1,30 @@
 ﻿using System.Collections;
-using System.Text;
+using System.Collections.Generic;
+using System.Text.Json;
 using ZipCourseWork.Implementation.Helpers;
 
 namespace ZipCourseWork.Implementation.Huffman
 {
     public class HuffmanTree
     {
-        private HuffmanNode _root = new HuffmanNode();
         private Dictionary<char, HuffmanNode> _lettersWithFrequency = new Dictionary<char, HuffmanNode>();
+        private string _text = "";
 
-        public void Build(string source)
+        public void AddToCompress(char letter)
         {
-            _lettersWithFrequency = new Dictionary<char, HuffmanNode>();
+            _text += letter;
 
-            if (source.IsNullOrEmpty())
-                return;
-
-            foreach (char c in source)
+            if (_lettersWithFrequency.ContainsKey(letter))
             {
-                if (_lettersWithFrequency.ContainsKey(c))
-                {
-                    _lettersWithFrequency[c].AddFrequency();
-                    continue;
-                }
-
-                _lettersWithFrequency.Add(c, new HuffmanNode(c, 1));
+                _lettersWithFrequency[letter].AddFrequency();
+                return;
             }
 
+            _lettersWithFrequency.Add(letter, new HuffmanNode(letter, 1));
+        }
+
+        public void Build()
+        {
             if (_lettersWithFrequency.IsNullOrEmpty())
                 return;
 
@@ -52,44 +50,31 @@ namespace ZipCourseWork.Implementation.Huffman
             if (letters.IsNullOrEmpty())
                 return;
 
-            _lettersWithFrequency.Values.ForEach(x => x.CalculatePath());
-
-            _root = letters.First();
+            _lettersWithFrequency.Values.ForEach(x => x.CompressInfo());
         }
 
-        public ComressResul Compress(string source)
+        public byte[] Compress()
         {
-            var sourceInBools = new List<bool>();
+            var bits = new List<bool>();
 
-            foreach(var letter in source)
-                sourceInBools.AddRange(_lettersWithFrequency[letter].Path);
+            if (_lettersWithFrequency.IsNullOrEmpty())
+                throw new NullReferenceException(nameof(_lettersWithFrequency));
 
-            var bitsCount = sourceInBools.Count;
-            var emptyBits = new List<bool>();
+            _lettersWithFrequency.Values.ForEach(x => bits.AddRange(x.InfoBits));
 
-            while (bitsCount % 8 != 0)
-            {
-                emptyBits.Add(false);
-                bitsCount++;
-            }
+            foreach (var letter in _text)
+                bits.AddRange(_lettersWithFrequency[letter].Path);
 
-            sourceInBools.AddRange(emptyBits);
+            var emptyBitsCount = 8 - bits.Count % 8;
 
-            var sourceInBits = new BitArray(sourceInBools.ToArray());
+            for (var i = 0; i < emptyBitsCount; i++)
+                bits.Add(false);
 
-            var bytes = new byte[bitsCount / 8];
+            bits = CompressLength(emptyBitsCount).Concat(bits).ToList();
+            var resultInBits = new BitArray(bits.ToArray());
 
-            sourceInBits.CopyTo(bytes, 0);
-
-            var result = new ComressResul()
-            {
-                Header = new ComressResultHeader()
-                {
-                    Root = _root,
-                    EmptyBitsCount = emptyBits.Count,
-                },
-                Compressed = bytes
-            };
+            var result = new byte[bits.Count / 8];
+            resultInBits.CopyTo(result, 0);
 
             return result;
         }
@@ -129,7 +114,6 @@ namespace ZipCourseWork.Implementation.Huffman
             return result.ToArray();
         }
 
-
         private byte[] ParseIntToByte(int[] source)
         {
             var result = new List<byte>();
@@ -139,5 +123,85 @@ namespace ZipCourseWork.Implementation.Huffman
 
             return result.ToArray();
         }
+
+        private List<bool> CompressLength(int emptyBitsCount)
+        {
+            var result = new List<bool>();
+
+            switch (emptyBitsCount)
+            {
+                case 1:
+                    result.Add(false);
+                    result.Add(false);
+                    result.Add(true);
+                    break;
+                case 2:
+                    result.Add(false);
+                    result.Add(true);
+                    result.Add(false);
+                    break;
+                case 3:
+                    result.Add(false);
+                    result.Add(true);
+                    result.Add(true);
+                    break;
+                case 4:
+                    result.Add(true);
+                    result.Add(false);
+                    result.Add(false);
+                    break;
+                case 5:
+                    result.Add(true);
+                    result.Add(false);
+                    result.Add(true);
+                    break;
+                case 6:
+                    result.Add(true);
+                    result.Add(true);
+                    result.Add(false);
+                    break;
+                case 7:
+                    result.Add(true);
+                    result.Add(true);
+                    result.Add(true);
+                    break;
+                default:
+                    result.Add(false);
+                    result.Add(false);
+                    result.Add(false);
+                    break;
+            }
+
+            var lengthBytes = BitConverter.GetBytes(_lettersWithFrequency.Count).RemoveExtraZero();
+
+            switch(lengthBytes.Length)
+            {
+                case 1:
+                    result.Add(false);
+                    result.Add(false);
+                    break;
+                case 2:
+                    result.Add(false);
+                    result.Add(true);
+                    break;
+                case 3:
+                    result.Add(true);
+                    result.Add(false);
+                    break;
+                default:
+                    result.Add(true);
+                    result.Add(true);
+                    break;
+            }
+
+            result.Add(false);
+            result.Add(false);
+            result.Add(false);
+
+            result.AddRange(lengthBytes.GetBits());
+
+            return result;
+        }
+    
     }
 }

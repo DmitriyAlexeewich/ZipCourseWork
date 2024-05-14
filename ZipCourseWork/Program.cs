@@ -1,7 +1,7 @@
 ﻿using ZipCourseWork.Implementation.Huffman;
 using ZipCourseWork.Implementation.RLE;
 
-var huffmanCompressor = new HuffmanCompressor();
+var huffmanCompressor = new HuffmanFileCompressor();
 var rleCompressor = new RLEFileCompressor();
 
 Compress("test", "txt");
@@ -15,8 +15,10 @@ void Compress(string sourceFileName, string fileExtension)
 
     using (var stream = File.OpenRead(filePath))
     {
-        rleCompressor.Compress(stream, fileName);
+        huffmanCompressor.Compress(stream, fileName);
+        //rleCompressor.Compress(stream, fileName);
     }
 
-    rleCompressor.Uncompress(fileName, "txt");
+    huffmanCompressor.Uncompress(fileName, fileExtension);
+    //rleCompressor.Uncompress(fileName, fileExtension);
 }
