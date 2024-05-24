@@ -1,29 +1,31 @@
-﻿using System.Text;
+﻿using System.Reflection.PortableExecutable;
+using System.Text;
+using System.Text.Json;
 using ZipCourseWork.Implementation.Helpers;
 
-namespace ZipCourseWork.Implementation.Huffman
+namespace ZipCourseWork.Implementation.LZ77
 {
-    public class HuffmanFileCompressor
+    public class LZ77FileCompressor
     {
         private string Path = Directory.GetCurrentDirectory();
 
         public void Compress(string filePath, string fileName)
         {
             Console.WriteLine();
-            Console.WriteLine("---Huffman Compress---");
+            Console.WriteLine("---LZ77 Compress---");
 
-            Console.WriteLine("Build tree...");
+            Console.WriteLine("Compress...");
 
             using (var stream = File.OpenRead(filePath))
             {
                 using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
-                    var tree = new HuffmanTree();
+                    var compressor = new LZ77Compressor();
 
                     while (true)
                     {
-                        var isEnd = false;
                         var bytes = new List<byte>();
+                        var isEnd = false;
 
                         try
                         {
@@ -34,8 +36,8 @@ namespace ZipCourseWork.Implementation.Huffman
                         {
                             if (bytes.Count == 1)
                             {
-                                tree.SetEmptyBytesCount();
                                 bytes.Add(0);
+                                compressor.SetHasEmptyByte();
                             }
 
                             isEnd = true;
@@ -44,18 +46,14 @@ namespace ZipCourseWork.Implementation.Huffman
                         if (!bytes.IsNullOrEmpty())
                         {
                             var letter = BitConverter.ToChar(bytes.ToArray());
-                            tree.AddToCompress(letter);
+                            compressor.Add(letter);
                         }
 
                         if (isEnd)
                             break;
                     }
 
-                    tree.Build();
-
-                    Console.WriteLine("Compress...");
-
-                    File.WriteAllBytes($"{Path}\\Result\\Huffman\\{fileName}.comp", tree.Compress());
+                    File.WriteAllBytes($"{Path}\\Result\\LZ77\\{fileName}.comp", compressor.Compress());
                 }
             }
 
@@ -65,24 +63,30 @@ namespace ZipCourseWork.Implementation.Huffman
         public void Uncompress(string fileName, string extensionName)
         {
             Console.WriteLine();
-            Console.WriteLine("---Huffman Uncompress---");
+            Console.WriteLine("---LZ77 Uncompress---");
 
-            Console.WriteLine("Uncompress...");
+            Console.WriteLine("Read files...");
 
-            using (var stream = File.OpenRead($"{Path}\\Result\\Huffman\\{fileName}.comp"))
+            using (var stream = File.OpenRead($"{Path}\\Result\\LZ77\\{fileName}.comp"))
             {
                 using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
-                    var huffmanTreeUncompressor = new HuffmanTreeUncompressor(reader.ReadByte());
-                    var bytesCount = reader.BaseStream.Length - 1;
+                    var uncompressor = new LZ77Uncompressor(reader.ReadByte());
 
-                    while (bytesCount > 0)
+                    while (true)
                     {
-                        huffmanTreeUncompressor.Add(reader.ReadByte(), bytesCount == 1);
-                        bytesCount--;
+                        try
+                        {
+                            uncompressor.Add(reader.ReadByte());
+                        }
+                        catch (EndOfStreamException e)
+                        {
+                            break;
+                        }
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\Huffman\\{fileName}_decomp.{extensionName}", huffmanTreeUncompressor.Result.ToArray());
+
+                    File.WriteAllBytes($"{Path}\\Result\\LZ77\\{fileName}_decomp.{extensionName}", uncompressor.Uncompress());
                 }
             }
 

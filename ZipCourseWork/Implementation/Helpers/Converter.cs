@@ -71,5 +71,6 @@ namespace ZipCourseWork.Implementation.Helpers
 
             return result[0];
         }
+    
     }
 }

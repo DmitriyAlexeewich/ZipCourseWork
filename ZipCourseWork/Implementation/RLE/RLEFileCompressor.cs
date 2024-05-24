@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.IO;
+using System.Text;
 
 namespace ZipCourseWork.Implementation.RLE
 {
@@ -6,7 +7,7 @@ namespace ZipCourseWork.Implementation.RLE
     {
         private string Path = Directory.GetCurrentDirectory();
 
-        public void Compress(FileStream stream, string fileName)
+        public void Compress(string filePath, string fileName)
         {
             Console.WriteLine();
             Console.WriteLine("---RLE Compress---");
@@ -15,21 +16,24 @@ namespace ZipCourseWork.Implementation.RLE
 
             var rleCompressor = new RLECompressor();
 
-            using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
+            using (var stream = File.OpenRead(filePath))
             {
-                while (true)
+                using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
-                    try
+                    while (true)
                     {
-                        rleCompressor.AddToCompress(reader.ReadByte());
+                        try
+                        {
+                            rleCompressor.AddToCompress(reader.ReadByte());
+                        }
+                        catch (EndOfStreamException e)
+                        {
+                            break;
+                        }
                     }
-                    catch (EndOfStreamException e)
-                    {
-                        break;
-                    }
-                }
 
-                File.WriteAllBytes($"{Path}\\Result\\RLE\\{fileName}.comp", rleCompressor.Compress());
+                    File.WriteAllBytes($"{Path}\\Result\\RLE\\{fileName}.comp", rleCompressor.Compress());
+                }
             }
 
             Console.WriteLine("Completed!");

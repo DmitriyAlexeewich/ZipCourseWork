@@ -1,14 +1,15 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
-using System.Text.Json;
 using ZipCourseWork.Implementation.Helpers;
 
 namespace ZipCourseWork.Implementation.Huffman
 {
     public class HuffmanTree
     {
+        private bool _hasEmptyByte;
         private Dictionary<char, HuffmanNode> _lettersWithFrequency = new Dictionary<char, HuffmanNode>();
         private string _text = "";
+
+        public void SetEmptyBytesCount() => _hasEmptyByte = true;
 
         public void AddToCompress(char letter)
         {
@@ -79,51 +80,6 @@ namespace ZipCourseWork.Implementation.Huffman
             return result;
         }
 
-        public byte[] Uncompress(byte[] source, CompressedFileHeader compressedFileHeader)
-        {
-            var bits = new BitArray(source);
-            var bitsInBools = new bool[bits.Length];
-
-            bits.CopyTo(bitsInBools, 0);
-            bitsInBools = bitsInBools.Take(bitsInBools.Length - compressedFileHeader.EmptyBitsCount).ToArray();
-
-            var result = new List<byte>();
-            var currentNode = compressedFileHeader.Root;
-
-            foreach (bool bit in bitsInBools)
-            {
-                if (bit)
-                {
-                    if(currentNode.Right != null)
-                        currentNode = currentNode.Right;
-                }
-                else
-                {
-                    if (currentNode.Left != null)
-                        currentNode = currentNode.Left;
-                }
-
-                if (currentNode.Left is null && currentNode.Right is null)
-                {
-                    var bytes = ParseIntToByte(currentNode.Symbol);
-                    result.AddRange(bytes);
-                    currentNode = compressedFileHeader.Root;
-                }
-            }
-
-            return result.ToArray();
-        }
-
-        private byte[] ParseIntToByte(int[] source)
-        {
-            var result = new List<byte>();
-
-            foreach (int item in source)
-                result.Add((byte)item);
-
-            return result.ToArray();
-        }
-
         private List<bool> CompressLength(int emptyBitsCount)
         {
             var result = new List<bool>();
@@ -172,36 +128,25 @@ namespace ZipCourseWork.Implementation.Huffman
                     break;
             }
 
-            var lengthBytes = BitConverter.GetBytes(_lettersWithFrequency.Count).RemoveExtraZero();
+            var pathLengthBytes = BitConverter.GetBytes(_lettersWithFrequency.Count).RemoveExtraZero();
 
-            switch(lengthBytes.Length)
-            {
-                case 1:
-                    result.Add(false);
-                    result.Add(false);
-                    break;
-                case 2:
-                    result.Add(false);
-                    result.Add(true);
-                    break;
-                case 3:
-                    result.Add(true);
-                    result.Add(false);
-                    break;
-                default:
-                    result.Add(true);
-                    result.Add(true);
-                    break;
-            }
+            result.AddRange(FourLengthToBits(pathLengthBytes.Length));
+            result.Add(_hasEmptyByte);
 
             result.Add(false);
             result.Add(false);
-            result.Add(false);
 
-            result.AddRange(lengthBytes.GetBits());
+            result.AddRange(pathLengthBytes.GetBits());
 
             return result;
         }
-    
+        
+        private bool[] FourLengthToBits(int length) => length switch
+        {
+            1 => [false, false],
+            2 => [false, true],
+            3 => [true, false],
+            _ => [true, true]
+        };
     }
 }

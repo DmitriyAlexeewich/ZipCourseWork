@@ -1,60 +1,60 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections;
 using ZipCourseWork.Implementation.Helpers;
 
 namespace ZipCourseWork.Implementation.Huffman
 {
+    public static class HeaderItemasBitsHelper
+    {
+        public static int ParsePairBits(bool[] bits)
+        {
+            if (bits[0])
+            {
+                if (bits[1])
+                    return 4;
+                else
+                    return 3;
+            }
+            else
+            {
+                if (bits[1])
+                    return 2;
+                else
+                    return 1;
+            }
+        }
+    }
+
     public class HeaderItemsCount
     {
         public int Count { get { return _count; } }
-        public bool IsConfigured { get { return _count < 0; } }
+        public int CountBytesLength { get { return _countBytesLength; } }
+        public bool IsConfigured { get { return _count > 0; } }
 
+        private int _deltaCountBytesLength;
         private int _countBytesLength;
         private List<byte> _countBytes = new List<byte>();
         private int _count = -1;
 
-        public HeaderItemsCount(int countBytesLength)
+        public HeaderItemsCount(bool[] countBytesLength)
         {
-            _countBytesLength = countBytesLength;
+            _countBytesLength = HeaderItemasBitsHelper.ParsePairBits(countBytesLength);
+            _deltaCountBytesLength = _countBytesLength;
         }
 
         public bool TryAddByte(byte source)
         {
-            if (_countBytesLength > 0)
+            if (_deltaCountBytesLength > 0)
             {
                 _countBytes.Add(source);
-                _countBytesLength--;
+                _deltaCountBytesLength--;
 
-                if (_countBytesLength == 0)
+                if (_deltaCountBytesLength == 0)
+                {
+                    while (_countBytes.Count < 4)
+                        _countBytes.Add(0);
+
                     _count = BitConverter.ToInt32(_countBytes.ToArray());
-
-                return true;
-            }
-
-            return false;
-        }
-    }
-
-    public class HuffmanHeaderItemLength
-    {
-        public bool IsConfigured { get { return _length != -1; } }
-        public int Length { get { return _length; } }
-
-        private List<bool> _bits = new List<bool>();
-        private int _length = -1;
-
-        public bool TryAddBit(bool bit)
-        {
-            if (_bits.Count < 2)
-            {
-                _bits.Add(bit);
-
-                if(_bits.Count == 2)
-                    _length = _bits.Take(2).GetByte() + 1;
+                }
 
                 return true;
             }
@@ -65,28 +65,28 @@ namespace ZipCourseWork.Implementation.Huffman
 
     public class HuffmanHeaderItemPath
     {
-        public List<bool> Path { get { return _path; } }
+        public string Path { get { return _pathString; } }
 
-        private int _lengthBytesCount;
         private List<bool> _lengthBits = new List<bool>();
         private int _length;
         private List<bool> _path = new List<bool>();
-
-        public HuffmanHeaderItemPath(int lengthBytesCount)
-        {
-            _lengthBytesCount = lengthBytesCount * 8;
-        }
+        private string _pathString;
 
         public bool TryAddBit(bool bit)
         {
-            if (_lengthBits.Count < _lengthBytesCount)
+            if (_lengthBits.Count < 5)
             {
                 _lengthBits.Add(bit);
 
-                if (_lengthBits.Count == _lengthBytesCount)
+                if (_lengthBits.Count == 5)
                 {
+                    _lengthBits.Add(false);
+                    _lengthBits.Add(false);
+                    _lengthBits.Add(false);
+
                     var bits = new BitArray(_lengthBits.ToArray());
-                    var bytes = new byte[bits.Count / 8];
+
+                    var bytes = new byte[4];
 
                     bits.CopyTo(bytes, 0);
                     _length = BitConverter.ToInt32(bytes);
@@ -98,6 +98,10 @@ namespace ZipCourseWork.Implementation.Huffman
             if (_path.Count < _length)
             {
                 _path.Add(bit);
+
+                if(_path.Count == _length)
+                    _path.ForEach(x => _pathString += x.ToString());
+
                 return true;
             }
 
@@ -107,31 +111,24 @@ namespace ZipCourseWork.Implementation.Huffman
 
     public class HuffmanHeaderItemLetter
     {
-        public bool IsConfigured { get { return _letter.HasValue; } }
-        public char Letter { get { return _letter.Value; } }
+        public bool IsConfigured { get { return !_letter.IsNullOrEmpty(); } }
+        public byte[] Letter { get { return _letter; } }
 
-        private int _letterBitsCount;
         private List<bool> _letterBits = new List<bool>();
-        private char? _letter;
-
-        public HuffmanHeaderItemLetter(int letterBytesCount)
-        {
-            _letterBitsCount = letterBytesCount * 8;
-        }
+        private byte[] _letter;
 
         public bool TryAddBit(bool bit)
         {
-            if (_letterBits.Count < _letterBitsCount)
+            if (_letterBits.Count < 16)
             {
                 _letterBits.Add(bit);
 
-                if (_letterBits.Count == _letterBitsCount)
+                if (_letterBits.Count == 16)
                 {
                     var bits = new BitArray(_letterBits.ToArray());
-                    var bytes = new byte[bits.Count / 8];
+                    _letter = new byte[2];
 
-                    bits.CopyTo(bytes, 0);
-                    _letter = BitConverter.ToChar(bytes);
+                    bits.CopyTo(_letter, 0);
                 }
 
                 return true;
@@ -144,44 +141,24 @@ namespace ZipCourseWork.Implementation.Huffman
     public class HuffmanHeaderItem
     {
         public bool IsConfigured { get { return _letter != null && _letter.IsConfigured; } }
-        public List<bool> Path { get { return _path.Path; } }
+        public string Path { get { return _path.Path; } }
+        public byte[] Letter { get { return _letter.Letter; } }
 
-        private HuffmanHeaderItemLength _letterBytesLength;
-        private HuffmanHeaderItemLength _lengthBytesLength;
         private HuffmanHeaderItemPath _path;
         private HuffmanHeaderItemLetter _letter;
 
         public HuffmanHeaderItem()
         {
-            _letterBytesLength = new HuffmanHeaderItemLength();
-            _lengthBytesLength = new HuffmanHeaderItemLength();
+            _path = new HuffmanHeaderItemPath();
+            _letter = new HuffmanHeaderItemLetter();
         }
 
         public bool TryAdd(bool bit)
         {
-            if (_letter is not null || _letter.IsConfigured)
-                return false;
-
-            if (_letterBytesLength.TryAddBit(bit))
-            {
-                if (_letterBytesLength.IsConfigured)
-                    _letter = new HuffmanHeaderItemLetter(_letterBytesLength.Length);
-
-                return true;
-            }
-
-            if (_lengthBytesLength.TryAddBit(bit))
-            {
-                if (_lengthBytesLength.IsConfigured)
-                    _path = new HuffmanHeaderItemPath(_lengthBytesLength.Length);
-
-                return true;
-            }
-
             if (_path.TryAddBit(bit))
                 return true;
 
-            if(_letterBytesLength.TryAddBit(bit))
+            if(_letter.TryAddBit(bit))
                 return true;
 
             return false;
@@ -192,10 +169,12 @@ namespace ZipCourseWork.Implementation.Huffman
     {
         public bool IsConfigured { get { return _items.Count == _maxCount && _items[_maxCount - 1].IsConfigured; } }
         public bool HasExtraValue { get { return !_extraValue.IsNullOrEmpty(); } }
+        public Dictionary<string, HuffmanHeaderItem> ItemsByPath { get { return _itemsByPath; } }
 
         private int _maxCount = 0;
         private List<HuffmanHeaderItem> _items = new List<HuffmanHeaderItem>();
         private bool[] _extraValue;
+        private Dictionary<string, HuffmanHeaderItem> _itemsByPath = new Dictionary<string, HuffmanHeaderItem>();
 
         public HuffmanHeaderItemsList(int maxCount)
         {
@@ -206,7 +185,7 @@ namespace ZipCourseWork.Implementation.Huffman
 
         public bool TryAddByte(byte source)
         {
-            if (_items.Count == _maxCount)
+            if (!_itemsByPath.IsNullOrEmpty())
                 return false;
 
             var bits = source.GetBits();
@@ -218,7 +197,7 @@ namespace ZipCourseWork.Implementation.Huffman
                 if (lastItem.TryAdd(bits[i]))
                     continue;
 
-                if (_items.Count == _maxCount)
+                if (_items.Count == _maxCount && lastItem.IsConfigured)
                     break;
 
                 lastItem = new HuffmanHeaderItem();
@@ -226,16 +205,23 @@ namespace ZipCourseWork.Implementation.Huffman
                 _items.Add(lastItem);
             }
 
-            if (_items.Count < _maxCount)
+            if (_items.Count < _maxCount || !lastItem.IsConfigured)
                 return true;
 
-            if (i == bits.Length)
-                return false;
+            _itemsByPath = _items.ToDictionary(x => x.Path, x => x);
 
-            _extraValue = bits.Take(new Range(i, bits.Length - 1)).ToArray();
-            return false;
+            if (i == bits.Length)
+                return true;
+
+            _extraValue = bits.Take(new Range(i, bits.Length)).ToArray();
+            return true;
         }
-    
-        public bool[] GetExtraValues() => _extraValue;
+
+        public bool[] GetExtraValues()
+        {
+            var extraValue = _extraValue;
+            _extraValue = Array.Empty<bool>();
+            return extraValue;
+        }
     }
 }

@@ -55,27 +55,15 @@ namespace ZipCourseWork.Implementation.Huffman
             _path = GetPath().ToArray();
 
             var letterBytes = BitConverter.GetBytes(_letter);
-            var lengthBytes = BitConverter.GetBytes(_path.Length).RemoveExtraZero();
 
             var result = new List<bool>();
 
-            result.AddRange(CalculateLength(letterBytes.Length));
-            result.AddRange(CalculateLength(lengthBytes.Length));
-
-            result.AddRange(lengthBytes.GetBits());
+            result.AddRange(_path.Length.GetBits().Take(5));
             result.AddRange(_path);
             result.AddRange(letterBytes.GetBits());
 
             _infoBits = result.ToArray();
         }
-
-        private bool[] CalculateLength(int bytesLength) => bytesLength switch
-        {
-            1 => [false, false],
-            2 => [false, true],
-            3 => [true, false],
-            _ => [true, true]
-        };
 
         public List<bool> GetPath()
         {

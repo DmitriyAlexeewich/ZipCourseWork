@@ -5,14 +5,11 @@ namespace ZipCourseWork.Implementation.RLE
 {
     public class RLECompressor
     {
-        private List<int> _t = new List<int>();
         private List<byte> _bytes = new List<byte>();
         private RLEByteListInfo _bytesInfo;
 
         public void AddToCompress(byte source)
         {
-            _t.Add(source);
-
             if (_bytesInfo is null)
             {
                 _bytesInfo = new RLEByteListInfo(source);
