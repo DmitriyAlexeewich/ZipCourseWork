@@ -5,28 +5,29 @@ namespace ZipCourseWork.Implementation.LZ77
 {
     public class LZ77GroupInfo
     {
-        public string FullText { get { return _buffer + _text; } }
-        public string ExtraText { get { return _extraText ?? string.Empty; } }
+        public List<LZ77Letter> FullText { get { return _buffer.Union(_text).ToList(); } }
+        public List<LZ77Letter> ExtraText { get { return _extraText ?? Array.Empty<LZ77Letter>().ToList(); } }
         public bool HasRepeats { get; private set; }
-        public bool HasExtraText { get { return !_extraText.IsNullOrEmpty(); } }
+        public bool HasText { get { return !_buffer.IsNullOrEmpty() || !_text.IsNullOrEmpty() || !_extraText.IsNullOrEmpty(); } }
 
         private const int _distance = 31;
 
         private int _bufferLength;
         private bool[] _bufferLengthInBits;
         private int _bufferDeltaLength;
-        private string _buffer;
+        private List<LZ77Letter> _buffer;
         private int _deltaDistance = 0;
-        private string _text;
+        private List<LZ77Letter> _text;
         private List<int> _repeatsIndexes = new List<int>();
-        private string _extraText;
+        private List<LZ77Letter> _extraText;
 
         public LZ77GroupInfo(int bufferLength)
         {
             _bufferLength = bufferLength;
             _bufferDeltaLength = 0;
-            _buffer = string.Empty;
+            _buffer = new List<LZ77Letter>();
             _bufferLengthInBits = CreateBufferLengthBits(bufferLength);
+            _text = new List<LZ77Letter>();
         }
 
         private bool[] CreateBufferLengthBits(int bufferLength) => bufferLength switch
@@ -38,18 +39,18 @@ namespace ZipCourseWork.Implementation.LZ77
             _ => throw new ArgumentOutOfRangeException(nameof(bufferLength), $"Not expected bufferLength value: {bufferLength}")
         };
 
-        public bool TryAdd(char letter)
+        public bool TryAdd(byte fByte, byte sByte)
         {
             if (_bufferDeltaLength < _bufferLength)
             {
-                _buffer += letter;
+                _buffer.Add(new LZ77Letter(fByte, sByte));
                 _bufferDeltaLength++;
                 return true;
             }
 
             if (_deltaDistance < _distance)
             {
-                _text += letter;
+                _text.Add(new LZ77Letter(fByte, sByte));
                 _deltaDistance++;
                 return true;
             }
@@ -59,22 +60,25 @@ namespace ZipCourseWork.Implementation.LZ77
 
         public void FillRepeats()
         {
-            if (!_text.Contains(_buffer))
+            var buffer = string.Join(",", _buffer.Select(x => x.Letter));
+            var text = string.Join(",", _text.Select(x => x.Letter));
+
+            if (!text.Contains(buffer))
                 return;
 
             var index = 0;
 
             while (index != -1)
             {
-                index = _text.IndexOf(_buffer, index);
+                index = text.IndexOf(buffer, index);
 
                 if (index != -1)
                 {
-                    _repeatsIndexes.Add(index);
-                    index++;
+                    _repeatsIndexes.Add(index / 8);
+                    index += _bufferLength * 8;
                 }
 
-                if (index >= _text.Length)
+                if (index >= text.Length)
                     break;
             }
 
@@ -90,18 +94,14 @@ namespace ZipCourseWork.Implementation.LZ77
 
             _buffer.ForEach(x =>
             {
-                var bytes = BitConverter.GetBytes(x);
-
-                bytes.ForEach(k => result.Add(new LZ77CompressedGroupInfo(false, k)));
+                x.Bytes.ForEach(k => result.Add(new LZ77CompressedGroupInfo(false, k)));
             });
 
-            for (int i = 0; i < _text.Length; i++)
+            for (int i = 0; i < _text.Count; i++)
             {
                 if (!_repeatsIndexes.Contains(i))
                 {
-                    var notRepeatedBytes = BitConverter.GetBytes(_text[i]);
-
-                    notRepeatedBytes.ForEach(x => result.Add(new LZ77CompressedGroupInfo(false, x)));
+                    _text[i].Bytes.ForEach(x => result.Add(new LZ77CompressedGroupInfo(false, x)));
                     continue;
                 }
 
@@ -116,15 +116,10 @@ namespace ZipCourseWork.Implementation.LZ77
                 var infoByte = new byte[1];
                 infoBits.CopyTo(infoByte, 0);
 
-                if (infoBits[1] == true && infoBits[0] == false && infoBits[2] == false && infoBits[3] == false && infoBits[4] == false && infoBits[5] == false && infoBits[6] == false && infoBits[7] == false)
-                {
-                    var t = 0;
-                    t++;
-                }
-
                 _repeatsIndexes.Remove(i);
 
-                result.Add(new LZ77CompressedGroupInfo(true, infoByte[0]));
+                var buffer = string.Join(",", _buffer.Select(x => x.Letter));
+                result.Add(new LZ77CompressedGroupInfo(true, infoByte[0], i, _bufferLength, buffer));
                 i += _bufferLength - 1;
 
                 if (!_repeatsIndexes.IsNullOrEmpty())
@@ -132,10 +127,10 @@ namespace ZipCourseWork.Implementation.LZ77
 
                 i++;
 
-                if (i >= _text.Length)
+                if (i >= _text.Count)
                     break;
 
-                _extraText = _text.Substring(i);
+                _extraText = _text.Skip(i).ToList();
                 break;
             }
 

@@ -8,7 +8,7 @@ var rleCompressor = new RLEFileCompressor();
 var lz77Compressor = new LZ77FileCompressor();
 
 Compress("test", "txt");
-//Compress("test", "bmp");
+Compress("test", "bmp");
 
 void Compress(string sourceFileName, string fileExtension)
 {

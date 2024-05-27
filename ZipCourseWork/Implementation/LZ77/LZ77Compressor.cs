@@ -1,15 +1,15 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using ZipCourseWork.Implementation.Helpers;
 
 namespace ZipCourseWork.Implementation.LZ77
 {
     public class LZ77Compressor
     {
-        private bool _hasEmptyByte;
         private LZ77GroupInfo[] _groups;
         private List<LZ77CompressedGroupInfo> _result = new List<LZ77CompressedGroupInfo>();
 
-        public void Add(char letter)
+        public void Add(byte fByte, byte sByte)
         {
             if (_groups == null)
             {
@@ -24,40 +24,44 @@ namespace ZipCourseWork.Implementation.LZ77
 
             var isAdded = false;
 
-            _groups.ForEach(x => isAdded = x.TryAdd(letter));
+            _groups.ForEach(x => isAdded = x.TryAdd(fByte, sByte));
 
             if (isAdded)
                 return;
 
+            CompressGroup(fByte, sByte);
+        }
+
+        private void CompressGroup(byte fByte, byte sByte, bool isBytesEmpty = false)
+        {
             _groups.ForEach(x => x.FillRepeats());
             var groupWithRepeats = _groups.LastOrDefault(x => x.HasRepeats);
 
             if (groupWithRepeats is null)
             {
                 var fulltext = _groups.Last().FullText;
-                var firstLetterBytes = BitConverter.GetBytes(fulltext[0]);
+                var firstLetter = fulltext[0];
 
-                firstLetterBytes.ForEach(x => _result.Add(new LZ77CompressedGroupInfo(false, x)));
+                firstLetter.Bytes.ForEach(x => _result.Add(new LZ77CompressedGroupInfo(false, x)));
 
-                fulltext = fulltext.Remove(0, 1);
-                AddExtraText(fulltext, letter);
+                fulltext.RemoveAt(0);
+                AddExtraText(fulltext, fByte, sByte, isBytesEmpty);
 
                 return;
             }
 
             _result.AddRange(groupWithRepeats.Compress());
 
-            var extraText = _groups.Last().FullText;
+            var extraText = groupWithRepeats.ExtraText;
+            var fullText = _groups.Last().FullText;
 
-            extraText = extraText.Remove(0, groupWithRepeats.FullText.Length);
+            fullText.RemoveRange(0, groupWithRepeats.FullText.Count);
+            extraText = extraText.Union(fullText).ToList();
 
-            if (groupWithRepeats.HasExtraText)
-                extraText += groupWithRepeats.ExtraText;
-
-            AddExtraText(extraText, letter);
+            AddExtraText(extraText, fByte, sByte, isBytesEmpty);
         }
 
-        private void AddExtraText(string extraText, char letter)
+        private void AddExtraText(List<LZ77Letter> extraText, byte fByte, byte sByte, bool isLetterEmpty)
         {
             _groups =
             [
@@ -68,23 +72,31 @@ namespace ZipCourseWork.Implementation.LZ77
             ];
 
             foreach (var extraTextLetter in extraText)
-                _groups.ForEach(x => x.TryAdd(extraTextLetter));
+                _groups.ForEach(x => x.TryAdd(extraTextLetter.FByte, extraTextLetter.SByte));
 
-            _groups.ForEach(x => x.TryAdd(letter));
+            if (!isLetterEmpty)
+                _groups.ForEach(x => x.TryAdd(fByte, sByte));
         }
-
-        public void SetHasEmptyByte() => _hasEmptyByte = true;
 
         public byte[] Compress()
         {
-            var result = new List<byte>();
+            if (_groups.Any(x => x.HasText))
+                CompressGroup(0, 0, true);
 
-            result.Add(_hasEmptyByte ? (byte)1 : (byte)0);
-            var t = 0;
+            if (_groups.Any(x => x.HasText))
+            {
+                var leftText = _groups.Last().FullText;
+
+                leftText.ForEach(x =>
+                {
+                    x.Bytes.ForEach(k => _result.Add(new LZ77CompressedGroupInfo(false, k)));
+                });
+            }
+
+            var result = new List<byte>();
 
             while (!_result.IsNullOrEmpty())
             {
-                t++;
                 var infoBits = new bool[8];
                 var eightBytes = new List<byte>();
 
@@ -102,7 +114,7 @@ namespace ZipCourseWork.Implementation.LZ77
                 info.CopyTo(infoBytes, 0);
 
                 result.Add(infoBytes[0]);
-                result.AddRange(eightBytes);
+                result.AddRange(eightBytes);                
             }
 
             return result.ToArray();

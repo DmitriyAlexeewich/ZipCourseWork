@@ -1,7 +1,4 @@
-﻿using System.Reflection.PortableExecutable;
-using System.Text;
-using System.Text.Json;
-using ZipCourseWork.Implementation.Helpers;
+﻿using System.Text;
 
 namespace ZipCourseWork.Implementation.LZ77
 {
@@ -24,29 +21,26 @@ namespace ZipCourseWork.Implementation.LZ77
 
                     while (true)
                     {
-                        var bytes = new List<byte>();
+                        byte? fByte = null;
+                        byte? sByte = null;
                         var isEnd = false;
 
                         try
                         {
-                            bytes.Add(reader.ReadByte());
-                            bytes.Add(reader.ReadByte());
+                            fByte = reader.ReadByte();
+                            sByte = reader.ReadByte();
                         }
                         catch (EndOfStreamException e)
                         {
-                            if (bytes.Count == 1)
-                            {
-                                bytes.Add(0);
-                                compressor.SetHasEmptyByte();
-                            }
+                            if (!sByte.HasValue)
+                                sByte = 0;
 
                             isEnd = true;
                         }
 
-                        if (!bytes.IsNullOrEmpty())
+                        if (fByte.HasValue && sByte.HasValue)
                         {
-                            var letter = BitConverter.ToChar(bytes.ToArray());
-                            compressor.Add(letter);
+                            compressor.Add(fByte.Value, sByte.Value);
                         }
 
                         if (isEnd)
@@ -71,7 +65,7 @@ namespace ZipCourseWork.Implementation.LZ77
             {
                 using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
-                    var uncompressor = new LZ77Uncompressor(reader.ReadByte());
+                    var uncompressor = new LZ77Uncompressor();
 
                     while (true)
                     {
@@ -84,7 +78,6 @@ namespace ZipCourseWork.Implementation.LZ77
                             break;
                         }
                     }
-
 
                     File.WriteAllBytes($"{Path}\\Result\\LZ77\\{fileName}_decomp.{extensionName}", uncompressor.Uncompress());
                 }
