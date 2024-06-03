@@ -8,8 +8,14 @@ namespace ZipCourseWork.Implementation.LZ77
         private readonly Range _distanceRange = new Range(1, 6);
         private readonly Range _bufferRange = new Range(6, 8);
 
+        private bool _hasEmptyByte;
         private List<byte> _result = new List<byte>();
         private List<byte> _deltaGroup = new List<byte>();
+
+        public LZ77Uncompressor(byte hasEmptyByte)
+        {
+            _hasEmptyByte = hasEmptyByte == 1;
+        }
 
         public void Add(byte source)
         {
@@ -83,6 +89,9 @@ namespace ZipCourseWork.Implementation.LZ77
         {
             if (!_deltaGroup.IsNullOrEmpty())
                 UncompressDeltaGroup();
+
+            if (_hasEmptyByte)
+                _result.RemoveAt(_result.Count - 1);
 
             return _result.ToArray();
         }

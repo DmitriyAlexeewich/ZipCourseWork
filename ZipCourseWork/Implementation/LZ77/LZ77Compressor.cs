@@ -6,6 +6,7 @@ namespace ZipCourseWork.Implementation.LZ77
 {
     public class LZ77Compressor
     {
+        private bool _hasEmptyByte;
         private LZ77GroupInfo[] _groups;
         private List<LZ77CompressedGroupInfo> _result = new List<LZ77CompressedGroupInfo>();
 
@@ -78,6 +79,8 @@ namespace ZipCourseWork.Implementation.LZ77
                 _groups.ForEach(x => x.TryAdd(fByte, sByte));
         }
 
+        public void SetHasEmptyByte() => _hasEmptyByte = true;
+
         public byte[] Compress()
         {
             if (_groups.Any(x => x.HasText))
@@ -93,7 +96,7 @@ namespace ZipCourseWork.Implementation.LZ77
                 });
             }
 
-            var result = new List<byte>();
+            var result = new List<byte>() { _hasEmptyByte ? (byte)1 : (byte)0 };
 
             while (!_result.IsNullOrEmpty())
             {

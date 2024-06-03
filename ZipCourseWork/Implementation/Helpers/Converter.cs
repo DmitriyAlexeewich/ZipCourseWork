@@ -72,5 +72,15 @@ namespace ZipCourseWork.Implementation.Helpers
             return result[0];
         }
     
+        public static int GetInt32(this IEnumerable<byte> source)
+        {
+            var bytes = new byte[4];
+            var count = source.Count();
+
+            for (var i = 0; i < count; i++)
+                bytes[i] = source.ElementAt(i);
+
+            return BitConverter.ToInt32(bytes, 0);
+        }
     }
 }

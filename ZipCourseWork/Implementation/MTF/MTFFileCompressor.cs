@@ -1,15 +1,20 @@
-﻿using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using ZipCourseWork.Implementation.LZ77;
 
-namespace ZipCourseWork.Implementation.LZ77
+namespace ZipCourseWork.Implementation.MTF
 {
-    public class LZ77FileCompressor
+    public class MTFFileCompressor
     {
         private string Path = Directory.GetCurrentDirectory();
 
         public void Compress(string filePath, string fileName)
         {
             Console.WriteLine();
-            Console.WriteLine("---LZ77 Compress---");
+            Console.WriteLine("---MTF Compress---");
 
             Console.WriteLine("Compress...");
 
@@ -17,7 +22,7 @@ namespace ZipCourseWork.Implementation.LZ77
             {
                 using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
-                    var compressor = new LZ77Compressor();
+                    var compressor = new MTFCompressor();
 
                     while (true)
                     {
@@ -43,14 +48,14 @@ namespace ZipCourseWork.Implementation.LZ77
 
                         if (fByte.HasValue && sByte.HasValue)
                         {
-                            compressor.Add(fByte.Value, sByte.Value);
+                            compressor.Add(new MTFLetter(fByte.Value, sByte.Value));
                         }
 
                         if (isEnd)
                             break;
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\LZ77\\{fileName}.comp", compressor.Compress());
+                    File.WriteAllBytes($"{Path}\\Result\\MTF\\{fileName}.comp", compressor.Compress());
                 }
             }
 
@@ -60,15 +65,15 @@ namespace ZipCourseWork.Implementation.LZ77
         public void Uncompress(string fileName, string extensionName)
         {
             Console.WriteLine();
-            Console.WriteLine("---LZ77 Uncompress---");
+            Console.WriteLine("---MTF Uncompress---");
 
             Console.WriteLine("Read files...");
 
-            using (var stream = File.OpenRead($"{Path}\\Result\\LZ77\\{fileName}.comp"))
+            using (var stream = File.OpenRead($"{Path}\\Result\\MTF\\{fileName}.comp"))
             {
                 using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
-                    var uncompressor = new LZ77Uncompressor(reader.ReadByte());
+                    var uncompressor = new MTFUncompressor(reader.ReadByte());
 
                     while (true)
                     {
@@ -82,7 +87,7 @@ namespace ZipCourseWork.Implementation.LZ77
                         }
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\LZ77\\{fileName}_decomp.{extensionName}", uncompressor.Uncompress());
+                    File.WriteAllBytes($"{Path}\\Result\\MTF\\{fileName}_decomp.{extensionName}", uncompressor.Uncompress());
                 }
             }
 
