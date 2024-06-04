@@ -7,12 +7,14 @@ namespace ZipCourseWork.Implementation.Huffman
     {
         private string Path = Directory.GetCurrentDirectory();
 
-        public void Compress(string filePath, string fileName)
+        public ResultFilePath Compress(string filePath, string fileName)
         {
             Console.WriteLine();
             Console.WriteLine("---Huffman Compress---");
 
             Console.WriteLine("Build tree...");
+
+            var resultFilePath = new ResultFilePath($"{Path}\\Result\\Huffman", $"{fileName}.comp");
 
             using (var stream = File.OpenRead(filePath))
             {
@@ -55,21 +57,29 @@ namespace ZipCourseWork.Implementation.Huffman
 
                     Console.WriteLine("Compress...");
 
-                    File.WriteAllBytes($"{Path}\\Result\\Huffman\\{fileName}.comp", tree.Compress());
+                    File.WriteAllBytes(resultFilePath.FilePath, tree.Compress());
                 }
             }
 
             Console.WriteLine("Completed!");
+
+            return resultFilePath;
         }
 
-        public void Uncompress(string fileName, string extensionName)
+        public ResultFilePath Uncompress(string fileName, string extensionName, string sourcePath = "")
         {
             Console.WriteLine();
             Console.WriteLine("---Huffman Uncompress---");
 
             Console.WriteLine("Uncompress...");
 
-            using (var stream = File.OpenRead($"{Path}\\Result\\Huffman\\{fileName}.comp"))
+            var resultFilePath = new ResultFilePath($"{Path}\\Result\\Huffman", $"{fileName}_decomp.{extensionName}");
+            var sourceFilePath = $"{Path}\\Result\\Huffman\\{fileName}.comp";
+
+            if (sourcePath != "")
+                sourceFilePath = sourcePath;
+
+            using (var stream = File.OpenRead(sourceFilePath))
             {
                 using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
@@ -82,11 +92,13 @@ namespace ZipCourseWork.Implementation.Huffman
                         bytesCount--;
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\Huffman\\{fileName}_decomp.{extensionName}", huffmanTreeUncompressor.Result.ToArray());
+                    File.WriteAllBytes(resultFilePath.FilePath, huffmanTreeUncompressor.Result.ToArray());
                 }
             }
 
             Console.WriteLine("Completed!");
+
+            return resultFilePath;
         }
     }
 }

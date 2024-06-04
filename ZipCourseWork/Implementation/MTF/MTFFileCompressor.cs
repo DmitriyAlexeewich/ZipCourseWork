@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ZipCourseWork.Implementation.LZ77;
+﻿using System.Text;
 
 namespace ZipCourseWork.Implementation.MTF
 {
@@ -11,12 +6,14 @@ namespace ZipCourseWork.Implementation.MTF
     {
         private string Path = Directory.GetCurrentDirectory();
 
-        public void Compress(string filePath, string fileName)
+        public ResultFilePath Compress(string filePath, string fileName)
         {
             Console.WriteLine();
             Console.WriteLine("---MTF Compress---");
 
             Console.WriteLine("Compress...");
+
+            var resultFilePath = new ResultFilePath($"{Path}\\Result\\MTF", $"{fileName}.comp");
 
             using (var stream = File.OpenRead(filePath))
             {
@@ -55,21 +52,29 @@ namespace ZipCourseWork.Implementation.MTF
                             break;
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\MTF\\{fileName}.comp", compressor.Compress());
+                    File.WriteAllBytes(resultFilePath.FilePath, compressor.Compress());
                 }
             }
 
             Console.WriteLine("Completed!");
+
+            return resultFilePath;
         }
 
-        public void Uncompress(string fileName, string extensionName)
+        public ResultFilePath Uncompress(string fileName, string extensionName, string sourcePath = "")
         {
             Console.WriteLine();
             Console.WriteLine("---MTF Uncompress---");
 
             Console.WriteLine("Read files...");
 
-            using (var stream = File.OpenRead($"{Path}\\Result\\MTF\\{fileName}.comp"))
+            var resultFilePath = new ResultFilePath($"{Path}\\Result\\MTF", $"{fileName}_decomp.{extensionName}");
+            var sourceFilePath = $"{Path}\\Result\\MTF\\{fileName}.comp";
+
+            if (sourcePath != "")
+                sourceFilePath = sourcePath;
+
+            using (var stream = File.OpenRead(sourceFilePath))
             {
                 using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
@@ -87,11 +92,13 @@ namespace ZipCourseWork.Implementation.MTF
                         }
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\MTF\\{fileName}_decomp.{extensionName}", uncompressor.Uncompress());
+                    File.WriteAllBytes(resultFilePath.FilePath, uncompressor.Uncompress());
                 }
             }
 
             Console.WriteLine("Completed!");
+
+            return resultFilePath;
         }
     }
 }

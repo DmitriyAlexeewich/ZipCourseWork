@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Text;
-using System.Text.Json.Serialization;
-using ZipCourseWork.Implementation.Helpers;
+﻿using ZipCourseWork.Implementation.Helpers;
 
 namespace ZipCourseWork.Implementation.Huffman
 {

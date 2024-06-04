@@ -7,17 +7,19 @@ namespace ZipCourseWork.Implementation.RLE
     {
         private string Path = Directory.GetCurrentDirectory();
 
-        public void Compress(string filePath, string fileName)
+        public ResultFilePath Compress(string filePath, string fileName)
         {
             Console.WriteLine();
             Console.WriteLine("---RLE Compress---");
 
             Console.WriteLine("Compress...");
 
-            var rleCompressor = new RLECompressor();
+            var resultFilePath = new ResultFilePath($"{Path}\\Result\\RLE", $"{fileName}.comp");
 
             using (var stream = File.OpenRead(filePath))
             {
+                var rleCompressor = new RLECompressor();
+
                 using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
                     while (true)
@@ -32,21 +34,29 @@ namespace ZipCourseWork.Implementation.RLE
                         }
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\RLE\\{fileName}.comp", rleCompressor.Compress());
+                    File.WriteAllBytes(resultFilePath.FilePath, rleCompressor.Compress());
                 }
             }
 
             Console.WriteLine("Completed!");
+
+            return resultFilePath;
         }
 
-        public void Uncompress(string fileName, string extensionName)
+        public ResultFilePath Uncompress(string fileName, string extensionName, string sourcePath = "")
         {
             Console.WriteLine();
             Console.WriteLine("---RLE Uncompress---");
 
             Console.WriteLine("Read files...");
 
-            using (var stream = File.OpenRead($"{Path}\\Result\\RLE\\{fileName}.comp"))
+            var resultFilePath = new ResultFilePath($"{Path}\\Result\\RLE", $"{fileName}_decomp.{extensionName}");
+            var sourceFilePath = $"{Path}\\Result\\RLE\\{fileName}.comp";
+
+            if (sourcePath != "")
+                sourceFilePath = sourcePath;
+
+            using (var stream = File.OpenRead(sourceFilePath))
             {
                 var rleCompressor = new RLECompressor();
 
@@ -64,11 +74,13 @@ namespace ZipCourseWork.Implementation.RLE
                         }
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\RLE\\{fileName}_decomp.{extensionName}", rleCompressor.UnCompress());
+                    File.WriteAllBytes(resultFilePath.FilePath, rleCompressor.UnCompress());
                 }
             }
 
             Console.WriteLine("Completed!");
+
+            return resultFilePath;
         }
     }
 }

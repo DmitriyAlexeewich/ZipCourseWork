@@ -6,12 +6,14 @@ namespace ZipCourseWork.Implementation.LZ77
     {
         private string Path = Directory.GetCurrentDirectory();
 
-        public void Compress(string filePath, string fileName)
+        public ResultFilePath Compress(string filePath, string fileName)
         {
             Console.WriteLine();
             Console.WriteLine("---LZ77 Compress---");
 
             Console.WriteLine("Compress...");
+
+            var resultFilePath = new ResultFilePath($"{Path}\\Result\\LZ77", $"{fileName}.comp");
 
             using (var stream = File.OpenRead(filePath))
             {
@@ -50,21 +52,29 @@ namespace ZipCourseWork.Implementation.LZ77
                             break;
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\LZ77\\{fileName}.comp", compressor.Compress());
+                    File.WriteAllBytes(resultFilePath.FilePath, compressor.Compress());
                 }
             }
 
             Console.WriteLine("Completed!");
+
+            return resultFilePath;
         }
 
-        public void Uncompress(string fileName, string extensionName)
+        public ResultFilePath Uncompress(string fileName, string extensionName, string sourcePath = "")
         {
             Console.WriteLine();
             Console.WriteLine("---LZ77 Uncompress---");
 
             Console.WriteLine("Read files...");
 
-            using (var stream = File.OpenRead($"{Path}\\Result\\LZ77\\{fileName}.comp"))
+            var resultFilePath = new ResultFilePath($"{Path}\\Result\\LZ77", $"{fileName}_decomp.{extensionName}");
+            var sourceFilePath = $"{Path}\\Result\\LZ77\\{fileName}.comp";
+
+            if (sourcePath != "")
+                sourceFilePath = sourcePath;
+
+            using (var stream = File.OpenRead(sourceFilePath))
             {
                 using (var reader = new BinaryReader(stream, Encoding.Unicode, false))
                 {
@@ -82,11 +92,13 @@ namespace ZipCourseWork.Implementation.LZ77
                         }
                     }
 
-                    File.WriteAllBytes($"{Path}\\Result\\LZ77\\{fileName}_decomp.{extensionName}", uncompressor.Uncompress());
+                    File.WriteAllBytes(resultFilePath.FilePath, uncompressor.Uncompress());
                 }
             }
 
             Console.WriteLine("Completed!");
+
+            return resultFilePath;
         }
     }
 }
